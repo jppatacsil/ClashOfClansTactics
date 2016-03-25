@@ -18,10 +18,18 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
 
-public class UDPClient extends JPanel{
-
+public class UDPClient extends JPanel implements Runnable, Constants{
+	
 	String username = "anonymous";
 	String address = "localhost";
+	String serverData;
+	String[] reply;
+	String[] offenseTroops = new String[3];
+	String[] defenseBuilds = new String[3];
+	
+	int gameStage=WAITING_FOR_PLAYERS;
+	
+	boolean connected = false;
 	boolean offenseTaken = false;
 	boolean defenseTaken = false;
 
@@ -36,11 +44,21 @@ public class UDPClient extends JPanel{
 
 	static ImageIcon[] oAvatar = new ImageIcon[7]; //Images for offensive troop
 	static ImageIcon[] dAvatar = new ImageIcon[7]; //Images for defensive building
+	
+	static oFormation[] troops = new oFormation[3]; //offensive troops
+	static dFormation[] buildings = new dFormation[3]; //defensive buildings
 
 	Font font = new Font("Supercell-Magic", Font.BOLD,36);
 	
+	DatagramSocket clientSocket = new DatagramSocket();
+	Thread t = new Thread(this);
+	
 	//Constructor
-	public UDPClient(){
+	public UDPClient(String server, String name) throws Exception{
+		this.address = server;
+		this.username = name;
+		
+		clientSocket.setSoTimeout(100);
 		
 		//the battle screen
 				battleScreen = new JPanel(new BorderLayout());
@@ -89,6 +107,8 @@ public class UDPClient extends JPanel{
 				
 				add(battleScreen);
 				setSize(700,500);
+				
+				t.start();
 	}
 	
 	//Set the address
@@ -100,180 +120,254 @@ public class UDPClient extends JPanel{
 	public void setName(String name){
 		this.username = name;
 	}
-
-	public void sendPacket(String packet) throws IOException{
-		BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
-		DatagramSocket clientSocket = new DatagramSocket();
-		InetAddress IPAddress = InetAddress.getByName(this.address); //Change with the server's address if used on another machine	
-		
-		byte[] sendData = new byte[1024];
-		byte[] receiveData = new byte[1024];
-		
-		String sentence = packet; //The defensive tactics that was sent
-		sendData = sentence.getBytes();
-		
-		//Send the request
-		DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-		clientSocket.send(sendPacket);
-		
-		//Get the reply
-		DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-		clientSocket.receive(receivePacket);
-		
-		//Print the reply received
-		String modifiedSentence = new String(receivePacket.getData());
-		System.out.println("RECEIVED BY "+username+": " + modifiedSentence.trim());
-		clientSocket.close(); //close the socket
-		
-		String[] tactics = modifiedSentence.split(",");
-		
-		if(tactics[0].equals("OFFENSIVE TACTICS") && offenseTaken == true){
-			JOptionPane.showMessageDialog(null, "Offense Already Taken!");
-			return;
-		}
-		
-		if(tactics[0].equals("DEFENSIVE TACTICS") && defenseTaken == true){
-			JOptionPane.showMessageDialog(null, "Defense Already Taken!");
-			return;
-		}
-		
-		if(tactics[0].equals("OFFENSIVE TACTICS")){ //If packets sent was for offense
-			//Update the offensive side of the battle screen
-			offenseTaken = true;
-			updateScreen(sentence, tactics);
-		}
-		
-		else{ //If packets sent was for defense
-			//Update the defensive side of the battle screen
-			defenseTaken = true;
-			updateScreen(sentence, tactics);
-		}
-		
-		//If both players are connected, game will now start
-		if(oPortrait.getIcon() != oAvatar[0] && dPortrait.getIcon() != dAvatar[0]){
-			headerLabel.setText("CLASH!!!");
-		}
+	
+	public String getServerData(){
+		return serverData;
 	}
 	
-	public static void updateScreen(String sentence, String[] tactics){
+	//Method to send packets to server
+	public void sendMessage(String sentence){
+		try{
+			BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
+			InetAddress IPAddress = InetAddress.getByName(this.address); //Change with the server's address if used on another machine	
+			
+			byte[] sendData = new byte[1024];
+			sendData = sentence.getBytes();
+			
+        	DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+        	clientSocket.send(sendPacket);
+        }catch(Exception e){}
+	}
+	
+	@Override
+	public void run() { //Method to listen from server
+		while(true){
+			try{
+				Thread.sleep(1);
+			}catch(Exception ioe){}
+			
+			//Get the data from players
+			byte[] receiveData = new byte[1024];
+			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+			try{
+	 			clientSocket.receive(receivePacket);
+			}catch(Exception ioe){/*lazy exception handling :)*/}
+			
+			serverData=new String(receiveData);
+			this.serverData=serverData.trim();
+			
+			//if (!serverData.equals("")){
+			//	System.out.println("Server Data>" +serverData);
+			//}
+	
+			//Study the following kids. 
+			if (!connected && serverData.startsWith("CONNECTED")){
+				connected=true;
+				System.out.println("Connected.");
+			}else if (!connected){
+				System.out.println("Connecting..");				
+				sendMessage("CONNECT "+username);
+			}else if (connected){
+				
+				reply = serverData.split(" ");
+				
+				//CHECK IF BOTH PLAYERS ARE CONNECTED
+				if(reply[0].equalsIgnoreCase("START")){
+					headerLabel.setText("PLAYERS CONNECTED!");
+				}
+				
+				//IF BOTH PLAYERS ARE CONNECTED, THEN START CLASH
+				if(offenseTaken == true && defenseTaken == true){
+					clash(0);
+				}
+				
+				//CHECK IF OFFENSIVE SIDE HAS ALREADY BEEN TAKEN
+				if(reply[0].equalsIgnoreCase("OFFENSE:") && offenseTaken == true){
+					JOptionPane.showMessageDialog(null, "Offense Already Taken!");
+					return;
+				}
+				
+				//CHECK IF DEFENSIVE SIDE HAS ALREADY BEEN TAKEN
+				if(reply[0].equalsIgnoreCase("DEFENSE:") && defenseTaken == true){
+					JOptionPane.showMessageDialog(null, "Defense Already Taken!");
+					return;
+				}
+				
+				//UPDATE THE OFFENSE SIDE IF PACKETS SENT WAS FOR OFFENSE
+				if(reply[0].equalsIgnoreCase("OFFENSE:")){
+					offenseTaken = true;
+					//Get the offensive troops
+					offenseTroops[0] = reply[1];
+					offenseTroops[1] = reply[2];
+					offenseTroops[2] = reply[3];
+					updateScreen(reply[0], reply[1], 0);
+				}
+				
+				//UPDATE THE DEFENSE SIDE IF PACKETS SENT WAS FOR DEFENSE
+				else if(reply[0].equalsIgnoreCase("DEFENSE:")){
+					defenseTaken = true;
+					//Get the defensive buildings
+					defenseBuilds[0] = reply[1];
+					defenseBuilds[1] = reply[2];
+					defenseBuilds[2] = reply[3];
+					updateScreen(reply[0], reply[1], 0);
+				}
+	
+			}
+
+		}			
+	}
+	
+	//This method updates the battle screen
+	public static void updateScreen(String playSide, String tactic, int order){
 		
-		if(tactics[0].equals("OFFENSIVE TACTICS")){//Offensive side
+		if(playSide.equalsIgnoreCase("OFFENSE:")){//Offensive side
 
-			//FOR FIRST OFFENSIVE TROOP
-			if(tactics[1].equals("BARBARIANS")){ oPortrait.setIcon(oAvatar[1]);}
-			else if(tactics[1].equals("ARCHERS")){ oPortrait.setIcon(oAvatar[2]);}
-			else if(tactics[1].equals("GIANTS")){ oPortrait.setIcon(oAvatar[3]);}
-			else if(tactics[1].equals("BALLOONS")){ oPortrait.setIcon(oAvatar[4]);}
-			else if(tactics[1].equals("WIZARDS")){ oPortrait.setIcon(oAvatar[5]);}
-			else{ oPortrait.setIcon(oAvatar[6]);}
-			
-			/*
-			
-			try
-			{
-			Thread.sleep(5000);//1sec
+			//FOR THE OFFENSIVE SIDE
+			if(tactic.equalsIgnoreCase("BARBARIANS")){ 
+				oPortrait.setIcon(oAvatar[1]);
+				troops[order] = new oFormation(order,1);
+			}else if(tactic.equalsIgnoreCase("ARCHERS")){ 
+				oPortrait.setIcon(oAvatar[2]);
+				troops[order] = new oFormation(order,2);
+			}else if(tactic.equalsIgnoreCase("GIANTS")){ 
+				oPortrait.setIcon(oAvatar[3]);
+				troops[order] = new oFormation(order,3);
+			}else if(tactic.equalsIgnoreCase("BALLOONS")){ 
+				oPortrait.setIcon(oAvatar[4]);
+				troops[order] = new oFormation(order,4);
+			}else if(tactic.equalsIgnoreCase("WIZARDS")){ 
+				oPortrait.setIcon(oAvatar[5]);
+				troops[order] = new oFormation(order,5);
+			}else{ 
+				oPortrait.setIcon(oAvatar[6]);
+				troops[order] = new oFormation(order,6);
 			}
-			catch(InterruptedException ex)
-			{
-			ex.printStackTrace();
-			}
-			
-			//SECOND OFFENSIVE TROOP
-			if(tactics[2].equals("Barbarians")){ oPortrait.setIcon(oAvatar[1]);}
-			else if(tactics[2].equals("Archers")){ oPortrait.setIcon(oAvatar[2]);}
-			else if(tactics[2].equals("Giants")){ oPortrait.setIcon(oAvatar[3]);}
-			else if(tactics[2].equals("Balloons")){ oPortrait.setIcon(oAvatar[4]);}
-			else if(tactics[2].equals("Wizards")){ oPortrait.setIcon(oAvatar[5]);}
-			else{ oPortrait.setIcon(oAvatar[6]);}
-			
-			try
-			{
-			Thread.sleep(5000);//1sec
-			}
-			catch(InterruptedException ex)
-			{
-			ex.printStackTrace();
-			}
-			
-			//THIRD OFFENSIVE TROOP
-			if(tactics[3].equals("Barbarians")){ oPortrait.setIcon(oAvatar[1]);}
-			else if(tactics[3].equals("Archers")){ oPortrait.setIcon(oAvatar[2]);}
-			else if(tactics[3].equals("Giants")){ oPortrait.setIcon(oAvatar[3]);}
-			else if(tactics[3].equals("Balloons")){ oPortrait.setIcon(oAvatar[4]);}
-			else if(tactics[3].equals("Wizards")){ oPortrait.setIcon(oAvatar[5]);}
-			else{ oPortrait.setIcon(oAvatar[6]);}
-			
-			try
-			{
-			Thread.sleep(5000);//1sec
-			}
-			catch(InterruptedException ex)
-			{
-			ex.printStackTrace();
-			}
-			
-			oPortrait.setIcon(oAvatar[0]); //DONE
-			
-			*/
-			
-		}else if(tactics[0].equals("DEFENSIVE TACTICS")){//Defensive side
+		}else if(playSide.equalsIgnoreCase("DEFENSE:")){//Defensive side
 
-			//FIRST DEFENSIVE BUILDING
-			if(tactics[1].equals("CANNONS")){ dPortrait.setIcon(dAvatar[1]);}
-			else if(tactics[1].equals("ARCHER TOWERS")){ dPortrait.setIcon(dAvatar[2]);}
-			else if(tactics[1].equals("MORTARS")){ dPortrait.setIcon(dAvatar[3]);}
-			else if(tactics[1].equals("AIR DEFENSE")){ dPortrait.setIcon(dAvatar[4]);}
-			else if(tactics[1].equals("WIZARD TOWERS")){ dPortrait.setIcon(dAvatar[5]);}
-			else{ dPortrait.setIcon(dAvatar[6]);}
-			
-			/*
-			try
-			{
-			Thread.sleep(5000);//1sec
+			//FOR THE DEFENSIVE SIDE
+			if(tactic.equalsIgnoreCase("CANNONS")){ 
+				dPortrait.setIcon(dAvatar[1]);
+				buildings[order] = new dFormation(order,1);
+			}else if(tactic.equalsIgnoreCase("ARCHERTOWERS")){ 
+				dPortrait.setIcon(dAvatar[2]);
+				buildings[order] = new dFormation(order,2);
+			}else if(tactic.equalsIgnoreCase("MORTARS")){ 
+				dPortrait.setIcon(dAvatar[3]);
+				buildings[order] = new dFormation(order,3);
+			}else if(tactic.equalsIgnoreCase("AIRDEFENSE")){ 
+				dPortrait.setIcon(dAvatar[4]);
+				buildings[order] = new dFormation(order,4);
+			}else if(tactic.equalsIgnoreCase("WIZARDTOWERS")){ 
+				dPortrait.setIcon(dAvatar[5]);
+				buildings[order] = new dFormation(order,5);
+			}else{ 
+				dPortrait.setIcon(dAvatar[6]);
+				buildings[order] = new dFormation(order,6);
 			}
-			catch(InterruptedException ex)
-			{
-			ex.printStackTrace();
-			}
-			
-			//SECOND DEFENSIVE BUILDING
-			if(tactics[2].equals("Cannons")){ dPortrait.setIcon(dAvatar[1]);}
-			else if(tactics[2].equals("Archer Towers")){ dPortrait.setIcon(dAvatar[2]);}
-			else if(tactics[2].equals("Mortars")){ dPortrait.setIcon(dAvatar[3]);}
-			else if(tactics[2].equals("Air Defense")){ dPortrait.setIcon(dAvatar[4]);}
-			else if(tactics[2].equals("Wizard Towers")){ dPortrait.setIcon(dAvatar[5]);}
-			else{ dPortrait.setIcon(dAvatar[6]);}
-			
-			try
-			{
-			Thread.sleep(5000);//1sec
-			}
-			catch(InterruptedException ex)
-			{
-			ex.printStackTrace();
-			}
-			
-			//THIRD DEFENSIVE BUILDING
-			if(tactics[3].equals("Cannons")){ dPortrait.setIcon(dAvatar[1]);}
-			else if(tactics[3].equals("Archer Towers")){ dPortrait.setIcon(dAvatar[2]);}
-			else if(tactics[3].equals("Mortars")){ dPortrait.setIcon(dAvatar[3]);}
-			else if(tactics[3].equals("Air Defense")){ dPortrait.setIcon(dAvatar[4]);}
-			else if(tactics[3].equals("Wizard Towers")){ dPortrait.setIcon(dAvatar[5]);}
-			else{ dPortrait.setIcon(dAvatar[6]);}
-			
-			try
-			{
-			Thread.sleep(5000);//1sec
-			}
-			catch(InterruptedException ex)
-			{
-			ex.printStackTrace();
-			}
-			
-			dPortrait.setIcon(dAvatar[0]); //DONE
-			
-			*/
-			
+
 		}
 	}//End of updateScreen
+	
+	//Method to begin clash
+	public void clash(int order){
+		//GAME CORE LOGIC
+		//Traverse the defensive tactic formation of the enemy
+		 while(buildings[0].build.hp > 0){ //Fight until the other is destroyed
+			 //dPortrait.setIcon(dAvatar[buildings[0].build.type]);
+			 //if(order == 0) updateScreen("OFFENSE:",offenseTroops[0],order);
+			 if(order == 1) updateScreen("OFFENSE:",offenseTroops[1],order);
+			 if(order == 2) updateScreen("OFFENSE:",offenseTroops[2],order);
+			 //oPortrait.setIcon(oAvatar[troops[order].troop.type]);
+			
+			//CLASH!!! The attacker hits first
+			buildings[0].build.hp = buildings[0].build.hp - troops[order].troop.ap;
+			//Counter attack if still alive
+			if(buildings[0].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[0].build.ap;
+			
+			System.out.println("Clash "+(order+1)+":");
+			System.out.println("Defense[0] HP Remaining: "+buildings[0].build.hp);
+			System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
+			
+			//Decrement counter of building or troop
+			 if(buildings[0].build.hp <= 0){
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				headerLabel.setText("OFFENSE WINS!");
+				break;
+			 }
+			 else if(troops[order].troop.hp <= 0){
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				headerLabel.setText("DEFENSE WINS!");
+				 order++;
+				 if(order == 3){
+					 headerLabel.setText("DEFENSE SUCCESSFUL!");
+					 return;
+				 }
+			 }
+		 }
+
+		 /*
+		 while(buildings[1].build.hp > 0){
+			 //dPortrait.setIcon(dAvatar[buildings[1].build.type]);
+			 //oPortrait.setIcon(oAvatar[troops[order].troop.type]);
+			
+			//CLASH!!! The attacker hits first
+			buildings[1].build.hp = buildings[1].build.hp - troops[order].troop.ap;
+			//Counter attack if still alive
+			if(buildings[1].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[1].build.ap;
+			
+			System.out.println("Defense[1] HP Remaining: "+buildings[1].build.hp);
+			System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
+			
+			//Decrement counter of building or troop
+			 if(buildings[1].build.hp <= 0){
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				headerLabel.setText("OFFENSE WINS!");
+				 break;
+			 }
+			 else if(troops[order].troop.hp <= 0){
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				headerLabel.setText("DEFENSE WINS!");
+				 order++;
+				 if(order == 3){
+					 headerLabel.setText("DEFENSE SUCCESSFUL!");
+					 return;
+				 }
+			 }
+		 }
+
+		 while(buildings[2].build.hp > 0){
+			dPortrait.setIcon(dAvatar[buildings[2].build.type]);
+			oPortrait.setIcon(oAvatar[troops[order].troop.type]);
+			
+			//CLASH!!! The attacker hits first
+			buildings[2].build.hp = buildings[2].build.hp - troops[order].troop.ap;
+			//Counter attack if still alive
+			if(buildings[2].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[2].build.ap;
+			
+			System.out.println("Defense[2] HP Remaining: "+buildings[2].build.hp);
+			System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
+			
+			//Decrement counter of building or troop
+			 if(buildings[2].build.hp <= 0){
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				headerLabel.setText("OFFENSE SUCCESSFUL!");
+			 break;
+			 }
+			 else if(troops[order].troop.hp <= 0){
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				headerLabel.setText("DEFENSE WINS!");
+				 order++;
+				 if(order == 3){
+					 headerLabel.setText("DEFENSE SUCCESSFUL!");
+					 break;
+				 }
+			 }
+			 
+		 }
+		 
+		 */
+
+	}
+	
 }

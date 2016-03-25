@@ -68,7 +68,7 @@ public class Buildings {
 			break;
 			
 		case 2: //Archer Towers
-			name = "Archer Towers";
+			name = "ArcherTowers";
 			break;
 			
 		case 3: //Mortars
@@ -76,15 +76,15 @@ public class Buildings {
 			break;
 			
 		case 4: //Air Defense
-			name = "Air Defense";
+			name = "AirDefense";
 			break;
 			
 		case 5: //Wizard Towers
-			name = "Wizard Towers";
+			name = "WizardTowers";
 			break;
 			
 		case 6: //Tesla Towers
-			name = "Tesla Towers";
+			name = "TeslaTowers";
 			break;
 		}
 		return name;

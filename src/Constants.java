@@ -1,10 +1,5 @@
-/**
- * Important game constants
- * @author Joseph Anthony C. Hermocill
- *
- */
 public interface Constants {
-	public static final String APP_NAME="Circle Wars 0.01";
+	public static final String APP_NAME="Clash of Clans: Tactics";
 	
 	/**
 	 * Game states.
@@ -17,5 +12,5 @@ public interface Constants {
 	/**
 	 * Game port
 	 */
-	public static final int PORT=1500;
+	public static final int PORT=9876;
 }

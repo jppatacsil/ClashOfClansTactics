@@ -6,15 +6,14 @@ import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.IOException;
 
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.SwingConstants;
 
 
@@ -26,6 +25,10 @@ public class Game extends JFrame{
 	public static ChatRoom chatRoom;
 	public static Game game;
 	public static UDPClient gameClient;
+	
+	final JOptionPane optionPane = new JOptionPane("Preparing for battle...", JOptionPane.INFORMATION_MESSAGE, JOptionPane.DEFAULT_OPTION, null, new Object[]{}, null);
+
+	final JDialog dialog = new JDialog();
 
 	static boolean server_user = false;
 	static String host;
@@ -33,6 +36,7 @@ public class Game extends JFrame{
 	static String username; //Player username
 	static String serverPacket;
 	static int port;
+	static int engagementChoice;
 	static int page = 1;
 	
 	CardLayout layout = new CardLayout(); //the layout
@@ -64,9 +68,13 @@ public class Game extends JFrame{
 	public Game(){
 		super("Clash of Clans: Tactics");
 		
+		//Ask for username
+		username = JOptionPane.showInputDialog("Enter username"); 
+		
 		chatRoom = new ChatRoom(); //Instantiate the chatroom
 		host = chatRoom.getHost(); //Get the host
 		port = chatRoom.getPort(); //Get the port
+		
 		add(chatRoom, BorderLayout.WEST); //Place the chatroom at the west side
 		
 		//the whole gameScreen
@@ -114,7 +122,7 @@ public class Game extends JFrame{
 		formationScreen.add(defensePane);
 		
 		try {
-			gameClient = new UDPClient();
+			gameClient = new UDPClient("localhost", username);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -157,14 +165,12 @@ public class Game extends JFrame{
 		// TODO Auto-generated method stub
 		game = new Game(); //Run the game
 		
-		//Ask for username
-		username = JOptionPane.showInputDialog("Enter username"); 
 		chatRoom.setUsername(username);
 		gameClient.setName(username);
 		
 		//Ask if run as server, 
 		int choice = JOptionPane.showConfirmDialog(null,
-				"Start the chat server?", "YES OR NO?", JOptionPane.YES_NO_OPTION);
+				"Do you want to run the server?", "YES OR NO?", JOptionPane.YES_NO_OPTION);
 		
 		if(choice == 0){ //Then run the server
 			server_user = true;
@@ -173,6 +179,7 @@ public class Game extends JFrame{
 		}else{ //Then run as client
 			String ip = JOptionPane.showInputDialog("Enter IP address of server");
 			chatRoom.setIP(ip);
+			gameClient.setAddress(ip);
 			System.out.println("Running as client...");
 		}
 			
@@ -193,6 +200,7 @@ public class Game extends JFrame{
 					}
 				}
 				for(int i=0; i<3; i++){
+					
 					if(buildings[i].build.showName(buildings[i].build.type) == "Unknown"){
 						JOptionPane.showMessageDialog(null, "Defensive Tactics formation not yet complete!");
 						return;
@@ -205,152 +213,62 @@ public class Game extends JFrame{
  				int order = 0;
  				page++; //Set for next page
  				gameButton.setText("Tactics Formation");
-				
+ 				
+ 				while(gameClient.headerLabel.getText() == "Waiting for players..."){
+ 					dialog.setTitle("MESSAGE");
+ 					dialog.setModal(true);
+
+ 					dialog.setContentPane(optionPane);
+
+ 					dialog.setLocationRelativeTo(null);
+ 					dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+ 					dialog.pack();
+ 					dialog.setVisible(true);
+ 				}
+ 				
  				//Show your tactics engagement onscreen
 				//ASK IF DEFEND OR ATTACK
-				Object[] options = {"I will Attack!",
-				                    "I will Defend!",
-				                    "Oops, not yet ready!"};
-				int n = JOptionPane.showOptionDialog(null,
-				    "What will you to do?",
-				    "ENGAGEMENT CHOICES",
-				    JOptionPane.YES_NO_CANCEL_OPTION,
-				    JOptionPane.QUESTION_MESSAGE,
-				    null,
-				    options,
-				    options[2]);
-				
-				if(n == 0){//Send the offensive tactics
+	 				Object[] options = {"I will Attack!",
+		                    "I will Defend!",
+		                    "Oops, not yet ready!"};
+						 	engagementChoice = JOptionPane.showOptionDialog(null,
+						    "What will you to do?",
+						    "ENGAGEMENT CHOICES",
+						    JOptionPane.YES_NO_CANCEL_OPTION,
+						    JOptionPane.QUESTION_MESSAGE,
+						    null,
+						    options,
+						    options[2]);
+
+				if(engagementChoice == 0){//Send the offensive tactics
 					//Get the game state packet
 					
-					message = "Offensive Tactics,";
-					message += troops[0].troop.showName(troops[0].troop.type) + ",";
-					message += troops[1].troop.showName(troops[1].troop.type) + ",";
+					message = "OffensiveTactics ";
+					message += troops[0].troop.showName(troops[0].troop.type) + " ";
+					message += troops[1].troop.showName(troops[1].troop.type) + " ";
 					message += troops[2].troop.showName(troops[2].troop.type);
 					
-					//Offensive tactics will now be sent to the server
-					try{ //Send the packet
-						gameClient.sendPacket(message);
-					}catch (IOException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-					
-					/*GAME CORE LOGIC
-					//Traverse the defensive tactic formation
-					 while(buildings[0].build.hp > 0){ //Fight until the other is destroyed
-						 gameClient.dPortrait.setIcon(gameClient.dAvatar[buildings[0].build.type]);
-						 gameClient.oPortrait.setIcon(gameClient.oAvatar[troops[order].troop.type]);
-						
-						//CLASH!!! The attacker hits first
-						buildings[0].build.hp = buildings[0].build.hp - troops[order].troop.ap;
-						//Counter attack if still alive
-						if(buildings[0].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[0].build.ap;
-						
-						System.out.println("Defense[0] HP Remaining: "+buildings[0].build.hp);
-						System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
-						
-						//Decrement counter of building or troop
-						 if(buildings[0].build.hp <= 0){
-							JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
-							gameClient.headerLabel.setText("OFFENSE WINS!");
-							 break;
-						 }
-						 else if(troops[order].troop.hp <= 0){
-							JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
-							gameClient.headerLabel.setText("DEFENSE WINS!");
-							 order++;
-							 if(order == 3){
-								 gameClient.headerLabel.setText("DEFENSE SUCCESSFUL!");
-								 return;
-							 }
-						 }
-					 }
-					 
-					 while(buildings[1].build.hp > 0){
-						 gameClient.dPortrait.setIcon(gameClient.dAvatar[buildings[1].build.type]);
-						gameClient.oPortrait.setIcon(gameClient.oAvatar[troops[order].troop.type]);
-						
-						//CLASH!!! The attacker hits first
-						buildings[1].build.hp = buildings[1].build.hp - troops[order].troop.ap;
-						//Counter attack if still alive
-						if(buildings[1].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[1].build.ap;
-						
-						System.out.println("Defense[1] HP Remaining: "+buildings[1].build.hp);
-						System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
-						
-						//Decrement counter of building or troop
-						 if(buildings[1].build.hp <= 0){
-							JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
-							gameClient.headerLabel.setText("OFFENSE WINS!");
-							 break;
-						 }
-						 else if(troops[order].troop.hp <= 0){
-							JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
-							gameClient.headerLabel.setText("DEFENSE WINS!");
-							 order++;
-							 if(order == 3){
-								 gameClient.headerLabel.setText("DEFENSE SUCCESSFUL!");
-								 return;
-							 }
-						 }
-					 }
-
-					 while(buildings[2].build.hp > 0){
-						gameClient.dPortrait.setIcon(gameClient.dAvatar[buildings[2].build.type]);
-						gameClient.oPortrait.setIcon(gameClient.oAvatar[troops[order].troop.type]);
-						
-						//CLASH!!! The attacker hits first
-						buildings[2].build.hp = buildings[2].build.hp - troops[order].troop.ap;
-						//Counter attack if still alive
-						if(buildings[2].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[2].build.ap;
-						
-						System.out.println("Defense[2] HP Remaining: "+buildings[2].build.hp);
-						System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
-						
-						//Decrement counter of building or troop
-						 if(buildings[2].build.hp <= 0){
-							JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
-							gameClient.headerLabel.setText("OFFENSE SUCCESSFUL!");
-						 break;
-						 }
-						 else if(troops[order].troop.hp <= 0){
-							JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
-							gameClient.headerLabel.setText("DEFENSE WINS!");
-							 order++;
-							 if(order == 3){
-								 gameClient.headerLabel.setText("DEFENSE SUCCESSFUL!");
-								 break;
-							 }
-						 }
-						 
-					 }
-					 */
+					gameClient.sendMessage(message);
 	
-				}else if(n == 1){//Send the defensive tactics
+				}else if(engagementChoice == 1){//Send the defensive tactics
 					//Get the game state packet
 					
-					message = "Defensive Tactics,";
-					message += buildings[0].build.showName(buildings[0].build.type) + ",";
-					message += buildings[1].build.showName(buildings[1].build.type) + ",";
+					message = "DefensiveTactics ";
+					message += buildings[0].build.showName(buildings[0].build.type) + " ";
+					message += buildings[1].build.showName(buildings[1].build.type) + " ";
 					message += buildings[2].build.showName(buildings[2].build.type);
 					
-					//Defensive tactics will now be sent to the server
-					try{ //Send the packet
-						gameClient.sendPacket(message);
-					}catch (IOException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
-					}
-					
+					gameClient.sendMessage(message);
 				}
 				
 				else{ //Go back to tactics formation
 					return;
 				}
  				
- 				}else{ //Go back to tactics formation
+ 				}else{ //Go back to tactics formation and reset tactics
  					page--;
+ 					gameClient.offenseTaken = false;
+ 					gameClient.defenseTaken = false;
  					gameButton.setText("Engage!");
  				}
 			}

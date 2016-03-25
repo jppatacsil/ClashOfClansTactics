@@ -20,6 +20,7 @@ public class ChatRoom extends JPanel implements ActionListener {
 	
 	JPanel chatPane;
 	JTextArea chatBox;
+	UDPServer gameServer;
 	
 	private static final long serialVersionUID = 1L;
 	// will first hold "Username:", later on "Enter message"
