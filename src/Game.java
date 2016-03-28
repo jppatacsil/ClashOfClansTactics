@@ -65,11 +65,12 @@ public class Game extends JFrame{
 	switchListener switcher = new switchListener(); //The cardswitching listener
 	planListener planner = new planListener(); //The button to show planning window
 	
-	public Game(){
+	private Game(){
 		super("Clash of Clans: Tactics");
 		
 		//Ask for username
-		username = JOptionPane.showInputDialog("Enter username"); 
+		username = JOptionPane.showInputDialog("Enter username");
+		ip = JOptionPane.showInputDialog("Enter IP address of game server");
 		
 		chatRoom = new ChatRoom(); //Instantiate the chatroom
 		host = chatRoom.getHost(); //Get the host
@@ -122,7 +123,7 @@ public class Game extends JFrame{
 		formationScreen.add(defensePane);
 		
 		try {
-			gameClient = new UDPClient("localhost", username);
+			gameClient = new UDPClient(ip, username);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -166,20 +167,18 @@ public class Game extends JFrame{
 		game = new Game(); //Run the game
 		
 		chatRoom.setUsername(username);
-		gameClient.setName(username);
 		
 		//Ask if run as server, 
 		int choice = JOptionPane.showConfirmDialog(null,
-				"Do you want to run the server?", "YES OR NO?", JOptionPane.YES_NO_OPTION);
+				"Run the chat server?", "YES OR NO?", JOptionPane.YES_NO_OPTION);
 		
 		if(choice == 0){ //Then run the server
 			server_user = true;
 			Server server = new Server(port);
 			server.start(); // Run the server for chat
 		}else{ //Then run as client
-			String ip = JOptionPane.showInputDialog("Enter IP address of server");
+			ip = JOptionPane.showInputDialog("Enter IP address of chat server");
 			chatRoom.setIP(ip);
-			gameClient.setAddress(ip);
 			System.out.println("Running as client...");
 		}
 			
@@ -200,7 +199,6 @@ public class Game extends JFrame{
 					}
 				}
 				for(int i=0; i<3; i++){
-					
 					if(buildings[i].build.showName(buildings[i].build.type) == "Unknown"){
 						JOptionPane.showMessageDialog(null, "Defensive Tactics formation not yet complete!");
 						return;
@@ -209,10 +207,17 @@ public class Game extends JFrame{
 				
 				layout.next(screens); //switch screens
  				if(page == 1){
-
+ 				
+ 	 			gameButton.setEnabled(false); //prevent user from going back
+ 	 			
  				int order = 0;
  				page++; //Set for next page
  				gameButton.setText("Tactics Formation");
+ 	 			gameClient.getGame(game);
+ 	 			
+ 	 			if(gameClient.connected == false){
+ 	 				gameClient.t.resume();
+ 	 			}
  				
  				while(gameClient.headerLabel.getText() == "Waiting for players..."){
  					dialog.setTitle("MESSAGE");
@@ -262,13 +267,28 @@ public class Game extends JFrame{
 				}
 				
 				else{ //Go back to tactics formation
+					gameButton.setEnabled(true);
 					return;
 				}
  				
  				}else{ //Go back to tactics formation and reset tactics
  					page--;
+ 					for(int i=0; i<3; i++){
+ 						troops[i].troop.initTroop(0);
+ 						troops[i].setTroop(0);
+ 						troops[i].instantiate(0);
+ 						buildings[i].build.initD(0);
+ 						buildings[i].setD(0);
+ 						buildings[i].instantiate(0);
+ 					}
  					gameClient.offenseTaken = false;
  					gameClient.defenseTaken = false;
+ 					gameClient.connected = false;
+ 					gameClient.oPortrait.setIcon(gameClient.oAvatar[0]);
+ 					gameClient.dPortrait.setIcon(gameClient.dAvatar[0]);
+ 					gameClient.headerLabel.setText("Waiting for players...");
+ 					gameClient.sendMessage("Reset game");
+ 					
  					gameButton.setText("Engage!");
  				}
 			}

@@ -53,6 +53,8 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 	DatagramSocket clientSocket = new DatagramSocket();
 	Thread t = new Thread(this);
 	
+	Game game; //The client's game interface
+	
 	//Constructor
 	public UDPClient(String server, String name) throws Exception{
 		this.address = server;
@@ -107,7 +109,6 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 				
 				add(battleScreen);
 				setSize(700,500);
-				
 				t.start();
 	}
 	
@@ -123,6 +124,10 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 	
 	public String getServerData(){
 		return serverData;
+	}
+	
+	public void getGame(Game game){
+		this.game = game;
 	}
 	
 	//Method to send packets to server
@@ -156,11 +161,10 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 			serverData=new String(receiveData);
 			this.serverData=serverData.trim();
 			
-			//if (!serverData.equals("")){
-			//	System.out.println("Server Data>" +serverData);
-			//}
+			if (!serverData.equals("")){
+				System.out.println("Server Data>" +serverData);
+			}
 	
-			//Study the following kids. 
 			if (!connected && serverData.startsWith("CONNECTED")){
 				connected=true;
 				System.out.println("Connected.");
@@ -178,7 +182,17 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 				
 				//IF BOTH PLAYERS ARE CONNECTED, THEN START CLASH
 				if(offenseTaken == true && defenseTaken == true){
-					clash(0);
+					int outcome;
+					outcome = clash(0); //Start clash and begin with the 1st index
+					if(outcome == 0){
+						JOptionPane.showMessageDialog(null,"Congratulations Defense!");
+						game.gameButton.setEnabled(true);
+						t.suspend(); //Suspend thread 
+					}else{  
+						JOptionPane.showMessageDialog(null,"Congratulations Offense!");
+						game.gameButton.setEnabled(true);
+						t.suspend(); //Suspend thread
+					}
 				}
 				
 				//CHECK IF OFFENSIVE SIDE HAS ALREADY BEEN TAKEN
@@ -270,15 +284,10 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 	}//End of updateScreen
 	
 	//Method to begin clash
-	public void clash(int order){
+	public int clash(int order){
 		//GAME CORE LOGIC
 		//Traverse the defensive tactic formation of the enemy
 		 while(buildings[0].build.hp > 0){ //Fight until the other is destroyed
-			 //dPortrait.setIcon(dAvatar[buildings[0].build.type]);
-			 //if(order == 0) updateScreen("OFFENSE:",offenseTroops[0],order);
-			 if(order == 1) updateScreen("OFFENSE:",offenseTroops[1],order);
-			 if(order == 2) updateScreen("OFFENSE:",offenseTroops[2],order);
-			 //oPortrait.setIcon(oAvatar[troops[order].troop.type]);
 			
 			//CLASH!!! The attacker hits first
 			buildings[0].build.hp = buildings[0].build.hp - troops[order].troop.ap;
@@ -291,82 +300,101 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 			
 			//Decrement counter of building or troop
 			 if(buildings[0].build.hp <= 0){
-				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???"
+						+ "\nClash "+(order+1)+":"
+						+ "\nDefense[0] HP Remaining: "+buildings[0].build.hp
+						+ "\nOffense["+order+"] HP Remaining: "+troops[order].troop.hp);
 				headerLabel.setText("OFFENSE WINS!");
+				updateScreen("DEFENSE:",defenseBuilds[1],1);
 				break;
 			 }
 			 else if(troops[order].troop.hp <= 0){
-				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???"
+						+ "\nClash "+(order+1)+":"
+						+ "\nDefense[0] HP Remaining: "+buildings[0].build.hp
+						+ "\nOffense["+order+"] HP Remaining: "+troops[order].troop.hp);
 				headerLabel.setText("DEFENSE WINS!");
 				 order++;
 				 if(order == 3){
 					 headerLabel.setText("DEFENSE SUCCESSFUL!");
-					 return;
+					 return 0;
 				 }
+				 updateScreen("OFFENSE:",offenseTroops[order],order); //Next attacker
 			 }
 		 }
 
-		 /*
 		 while(buildings[1].build.hp > 0){
-			 //dPortrait.setIcon(dAvatar[buildings[1].build.type]);
-			 //oPortrait.setIcon(oAvatar[troops[order].troop.type]);
 			
 			//CLASH!!! The attacker hits first
 			buildings[1].build.hp = buildings[1].build.hp - troops[order].troop.ap;
 			//Counter attack if still alive
 			if(buildings[1].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[1].build.ap;
 			
+			System.out.println("Clash "+(order+1)+":");
 			System.out.println("Defense[1] HP Remaining: "+buildings[1].build.hp);
 			System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
 			
 			//Decrement counter of building or troop
 			 if(buildings[1].build.hp <= 0){
-				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+					JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???"
+							+ "\nClash "+(order+1)+":"
+							+ "\nDefense[1] HP Remaining: "+buildings[1].build.hp
+							+ "\nOffense["+order+"] HP Remaining: "+troops[order].troop.hp);
 				headerLabel.setText("OFFENSE WINS!");
+				updateScreen("DEFENSE:",defenseBuilds[2],2);
 				 break;
 			 }
 			 else if(troops[order].troop.hp <= 0){
-				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				 JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???"
+							+ "\nClash "+(order+1)+":"
+							+ "\nDefense[1] HP Remaining: "+buildings[1].build.hp
+							+ "\nOffense["+order+"] HP Remaining: "+troops[order].troop.hp);
 				headerLabel.setText("DEFENSE WINS!");
 				 order++;
 				 if(order == 3){
 					 headerLabel.setText("DEFENSE SUCCESSFUL!");
-					 return;
+					 return 0;
 				 }
+				 updateScreen("OFFENSE:",offenseTroops[order],order);//Next attacker
 			 }
 		 }
 
 		 while(buildings[2].build.hp > 0){
-			dPortrait.setIcon(dAvatar[buildings[2].build.type]);
-			oPortrait.setIcon(oAvatar[troops[order].troop.type]);
 			
 			//CLASH!!! The attacker hits first
 			buildings[2].build.hp = buildings[2].build.hp - troops[order].troop.ap;
 			//Counter attack if still alive
 			if(buildings[2].build.hp > 0) troops[order].troop.hp = troops[order].troop.hp - buildings[2].build.ap;
 			
+			System.out.println("Clash "+(order+1)+":");
 			System.out.println("Defense[2] HP Remaining: "+buildings[2].build.hp);
 			System.out.println("Offense["+order+"] HP Remaining: "+troops[order].troop.hp);
 			
 			//Decrement counter of building or troop
 			 if(buildings[2].build.hp <= 0){
-				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				 JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???"
+							+ "\nClash "+(order+1)+":"
+							+ "\nDefense[2] HP Remaining: "+buildings[2].build.hp
+							+ "\nOffense["+order+"] HP Remaining: "+troops[order].troop.hp);
 				headerLabel.setText("OFFENSE SUCCESSFUL!");
-			 break;
+				break;
 			 }
 			 else if(troops[order].troop.hp <= 0){
-				JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???");
+				 JOptionPane.showMessageDialog(null, "\nCLASH!!! WHO WINS???"
+							+ "\nClash "+(order+1)+":"
+							+ "\nDefense[2] HP Remaining: "+buildings[2].build.hp
+							+ "\nOffense["+order+"] HP Remaining: "+troops[order].troop.hp);
 				headerLabel.setText("DEFENSE WINS!");
 				 order++;
 				 if(order == 3){
 					 headerLabel.setText("DEFENSE SUCCESSFUL!");
-					 break;
+					 return 0;
 				 }
+				 updateScreen("OFFENSE:",offenseTroops[order],order); //Next attacker
 			 }
-			 
 		 }
 		 
-		 */
+		return 1;
 
 	}
 	

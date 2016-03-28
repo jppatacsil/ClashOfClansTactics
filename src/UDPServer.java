@@ -17,9 +17,7 @@ public class UDPServer implements Runnable, Constants{
 	int playerCount = 0;
 	int numPlayers;
 	int gameStage=WAITING_FOR_PLAYERS;
-	
-	static ArrayList<InetAddress> playerAddress = new ArrayList<InetAddress>();
-	
+
 	public UDPServer(int numPlayers){
 		this.numPlayers = numPlayers;
 		try {
@@ -85,13 +83,13 @@ public class UDPServer implements Runnable, Constants{
 			//remove excess bytes
 			playerData = playerData.trim();
 			
-			//if (!playerData.equals("")){
-			//	System.out.println("Player Data> "+playerData);
-			//}
+			if (!playerData.equals("")){
+				System.out.println("Player Data> "+playerData);
+			}
 			
 			// process
 			switch(gameStage){
-				  case WAITING_FOR_PLAYERS:
+				  case WAITING_FOR_PLAYERS: //Game state where server waits for players to connect
 						if (playerData.startsWith("CONNECT")){
 							String tokens[] = playerData.split(" ");
 							Player player=new Player(tokens[1],packet.getAddress(),packet.getPort());
@@ -104,19 +102,31 @@ public class UDPServer implements Runnable, Constants{
 							}
 						}
 					  break;	
-				  case GAME_START:
+				  case GAME_START: //Game state where players are both connected
 					  System.out.println("Game State: START");
 					  broadcast("START GAME");
 					  gameStage=IN_PROGRESS;
 					  break;
-				  case IN_PROGRESS:
+				  case IN_PROGRESS: //Game stage where players begin clash
 					  if(playerData.startsWith("OffensiveTactics")){ //If the server received Offensive/DefensiveTactics, return OFFENSE/DEFENSE GRANTED
+						  	System.out.println("Offensive tactics received!\nPlacing troops in battle screen...");
 							reply = playerData.split(" ");
 							broadcast("Offense: "+reply[1]+" "+reply[2]+" "+reply[3]);
 						}else if(playerData.startsWith("DefensiveTactics")){
+							System.out.println("Defensive tactics received!\nPlacing buildings in battle screen...");
 							reply = playerData.split(" ");
 							broadcast("Defense: "+reply[1]+" "+reply[2]+" "+reply[3]);
 						}
+					  if(playerData.startsWith("Reset")){
+						  broadcast("Restarting game...");
+						  System.out.println("Game State: END");
+						  gameStage=GAME_END;//end the game
+					  }
+					  break;
+				  case GAME_END: //Game stage where players disconnect from the server
+					  System.out.println("Restarting game...");
+					  gameStage=WAITING_FOR_PLAYERS;
+					  playerCount = 0;
 					  break;
 			}				  
 		}
