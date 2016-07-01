@@ -1,14 +1,18 @@
+import java.awt.BorderLayout;
 import java.awt.GridLayout;
-import java.io.BufferedReader;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.Random;
 
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
@@ -24,42 +28,72 @@ This is the load-tester of the game wherein its functions are:
 	Should be able to change the target server’s IP address.
 */
 
-public class LoadTester extends JFrame implements Runnable, Constants {
+public class LoadTester extends JFrame implements ActionListener {
 	
-	String randomText[] = {"Just","A","Rather","Very","Intelligent","System"};
-	String commands[] = {"CONNECT","OffensiveTactics","DefensiveTactics:","Start","Restart"};
+	JLabel serverLabel = new JLabel("Server URL: ",JLabel.CENTER);
+	JLabel clientsLabel = new JLabel("Number of Clients: ",JLabel.CENTER);
+	JLabel iterationLabel = new JLabel("Number of iterations: ",JLabel.CENTER);
+	JTextField serverInput = new JTextField();
+	SpinnerModel model;
+	JSpinner clientsInput, iterationInput;
+	JButton test = new JButton("Test");
+	
+	String[] troops = {"Barbarians","Archers","Giants","Balloons","Wizards","Dragons"};
+	String[] builds = {"Cannons","ArcherTowers","Mortars","AirDefense","WizardTowers","TeslaTowers"};
+	String[] commands = new String [6];
+	
+	Random rand;
+	int random_num = 0;
+	
+	LoadTesterClient c = new LoadTesterClient();
+	
 	String serverURL;
 	DatagramSocket serverSocket = null;
 	
 	//Constructor of the load-tester server
 	private LoadTester(){
 		super("Load Tester");
-		
-		JLabel serverLabel = new JLabel("Server URL: ",JLabel.CENTER);
-		JLabel clientsLabel = new JLabel("Number of Clients: ",JLabel.CENTER);
-		JLabel iterationLabel = new JLabel("Number of iterations: ",JLabel.CENTER);
-		
-		JTextField serverInput = new JTextField();
-		
+
 		int min = 0;
 	    int max = 1000;
 	    int step = 2;
 	    int initValue = 0;
-	    SpinnerModel model = new SpinnerNumberModel(initValue, min, max, step);
+	    model = new SpinnerNumberModel(initValue, min, max, step);
 		
-		JSpinner clientsInput = new JSpinner(model);
-		JSpinner iterationInput = new JSpinner(model);
+		clientsInput = new JSpinner(model);
+		iterationInput = new JSpinner(model);
 		
-		setLayout(new GridLayout(3,2));
+		setLayout(new GridLayout(2,2));
 		
 		add(serverLabel);
 		add(serverInput);
 		
-		add(clientsLabel);
-		add(clientsInput);
+		//add(clientsLabel);
+		//add(clientsInput);
 		
-		add(iterationLabel);
-		add(iterationInput);
+		//add(iterationLabel);
+		//add(iterationInput);
+		
+		add(new JLabel("Click button to test >>>> ",JLabel.CENTER));
+		add(test);
+		test.addActionListener(this);
+		
+		//Set random commands
+		String cmd = "";
+		for(int i=0; i<6; i++){
+			for(int j=0; j<6; j++){
+				for(int k=0; k<6; k++){
+					if(j%2 == 0){
+						cmd = cmd + " " + troops[k];
+					}
+					else{
+						cmd = cmd + " " + builds[k];
+					}
+				}
+					cmd = cmd + "\n";
+			}
+			commands[i] = cmd;
+		}
 		
 		pack();
 		setSize(400,150);
@@ -68,47 +102,34 @@ public class LoadTester extends JFrame implements Runnable, Constants {
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 	}
 	
-	//Run the thread server for the load-tester
-	public void run() {
-		// TODO Auto-generated method stub
-			try {
-				serverSocket = new DatagramSocket(PORT);
-			} catch (SocketException e2) {
-				// TODO Auto-generated catch block
-				e2.printStackTrace();
-			}             
-			byte[] receiveData = new byte[1024];            
-			byte[] sendData = new byte[1024]; 
-			
-			while(true){                 
-				DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);                   
-				try {
-					serverSocket.receive(receivePacket);
-				} catch (IOException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				
-				String sentence = new String( receivePacket.getData());                   
-				System.out.println("RECEIVED: " + sentence);                   
-				InetAddress IPAddress = receivePacket.getAddress();                   
-				int port = receivePacket.getPort();                   
-				
-				String capitalizedSentence = sentence.toUpperCase();                   
-				sendData = capitalizedSentence.getBytes();                   
-				DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, port);                   
-				try {
-					serverSocket.send(sendPacket);
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}                
-			}
-	}
-	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		new LoadTester();
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		// TODO Auto-generated method stub
+		
+		if(e.getSource() == test){
+			serverURL = serverInput.getText();
+			
+			if(serverURL.isEmpty() == true){
+				JOptionPane.showMessageDialog(null, "ServerURL not filled!");
+				return;
+			}
+			
+			System.out.println("Testing load...");
+			random_num = (int) (Math.random() * ( 4 - 0 )); //Get random num
+			try {
+				for(int i=0; i<1000; i++){
+					c.tester(commands[random_num], serverURL); //Load dummy client with random commands
+				}
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+		}
+		
 	}
 
 }

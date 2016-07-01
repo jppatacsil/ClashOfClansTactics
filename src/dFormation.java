@@ -1,18 +1,23 @@
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 
+/**
+ * This is the class for the defensive formation which extends a JButton
+ * @author Jophi
+ *
+ */
 
 public class dFormation extends JButton {
 	
 	int order;
 	int type;
-	ImageIcon questionMark = new ImageIcon("questionmark.jpg");
-	ImageIcon cannons = new ImageIcon("cannon.jpg"); //Image for turned on lights
-	ImageIcon aTowers = new ImageIcon("aTowers.jpg"); //Image for turned off lights
-	ImageIcon mortars = new ImageIcon("mortars.jpg"); //Image for turned on lights
-	ImageIcon airD = new ImageIcon("airD.jpg"); //Image for turned off lights
-	ImageIcon wTowers = new ImageIcon("wTowers.jpg"); //Image for turned on lights
-	ImageIcon tTowers = new ImageIcon("tTowers.jpg"); //Image for turned off lights
+	ImageIcon questionMark = new ImageIcon(getClass().getResource("questionmark.jpg"));
+	ImageIcon cannons = new ImageIcon(getClass().getResource("cannon.jpg")); //Image for turned on lights
+	ImageIcon aTowers = new ImageIcon(getClass().getResource("aTowers.jpg")); //Image for turned off lights
+	ImageIcon mortars = new ImageIcon(getClass().getResource("mortars.jpg")); //Image for turned on lights
+	ImageIcon airD = new ImageIcon(getClass().getResource("airD.jpg")); //Image for turned off lights
+	ImageIcon wTowers = new ImageIcon(getClass().getResource("wTowers.jpg")); //Image for turned on lights
+	ImageIcon tTowers = new ImageIcon(getClass().getResource("tTowers.jpg")); //Image for turned off lights
 	Buildings build;
 	
 	//Constructor class

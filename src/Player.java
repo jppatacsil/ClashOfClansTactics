@@ -1,5 +1,10 @@
 import java.net.InetAddress;
 
+/*
+ * This class will represent the Player that is in game
+ * It will house the port, username and the address of the players
+ */
+
 public class Player {
 
 	private InetAddress address;

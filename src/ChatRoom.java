@@ -15,9 +15,18 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
-
+/**
+ * This class is the chat user interface (chat room)
+ * This is where the users can: 
+ * send messages to each other,
+ * view messages from each other,
+ * and see who's logged in the chat room
+ * @author Jophi
+ *
+ */
 public class ChatRoom extends JPanel implements ActionListener {
 	
+	//Class variables
 	JPanel chatPane;
 	JTextArea chatBox;
 	UDPServer gameServer;
@@ -41,6 +50,7 @@ public class ChatRoom extends JPanel implements ActionListener {
 	public int defaultPort;
 	public String defaultHost;
 	
+	//Constructor
 	public ChatRoom(){
 		
 		setLayout(new BorderLayout());

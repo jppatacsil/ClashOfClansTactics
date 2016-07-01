@@ -4,39 +4,33 @@ import java.io.*;
 import java.util.*;
 
 /*
- * The Client that can be run both as a console or a GUI
+ * The chat client that will be reading from and writing on the socket
  */
 public class Client  {
 
-	// for I/O
+	//For I/O
 	private ObjectInputStream sInput;		// to read from the socket
 	private ObjectOutputStream sOutput;		// to write on the socket
 	private Socket socket;
 
-	// if I use a GUI or not
 	//private ClientGUI cg;
 	private ChatRoom cr;
 	
-	// the server, the port and the username
+	// The server, the port and the username
 	private String server, username;
 	private int port;
 
 	/*
-	 *  Constructor called by console mode
-	 *  server: the server address
-	 *  port: the port number
-	 *  username: the username
+	 *  Constructor without UI
 	 */
 	Client(String server, int port, String username) {
-		// which calls the common constructor with the GUI set to null
+		//Which calls the common constructor with the GUI set to null
 		this(server, port, username,null);
 	}
 
 	/*
 	 * Constructor call when used from a GUI
-	 * in console mode the ClienGUI parameter is null
 	 */
-	
 	Client(String server, int port, String username, ChatRoom cr) {
 		this.server = server;
 		this.port = port;
@@ -138,22 +132,7 @@ public class Client  {
 
 	}
 	/*
-	 * To start the Client in console mode use one of the following command
-	 * > java Client
-	 * > java Client username
-	 * > java Client username portNumber
-	 * > java Client username portNumber serverAddress
-	 * at the console prompt
-	 * If the portNumber is not specified 1500 is used
-	 * If the serverAddress is not specified "localHost" is used
-	 * If the username is not specified "Anonymous" is used
-	 * > java Client 
-	 * is equivalent to
-	 * > java Client Anonymous 1500 localhost 
-	 * are eqquivalent
-	 * 
-	 * In console mode, if an error occurs the program simply stops
-	 * when a GUI id used, the GUI is informed of the disconnection
+	 * The main method
 	 */
 	public static void main(String[] args) {
 		// default values

@@ -16,10 +16,10 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-
 public class Game extends JFrame{
 	
 	String message; //The message that the client will send to the server
+	String altMessage; //If packet was dropped
 	
 	//Static variables
 	public static ChatRoom chatRoom;
@@ -41,7 +41,7 @@ public class Game extends JFrame{
 	
 	CardLayout layout = new CardLayout(); //the layout
 	
-	JPanel screens; //The card layout
+	static JPanel screens; //The card layout
 	JPanel gameScreen; //the whole game panel
 	JPanel formationScreen; //the card1, tactics page
 	JPanel offensePane; //the offensive troops
@@ -70,7 +70,6 @@ public class Game extends JFrame{
 		
 		//Ask for username
 		username = JOptionPane.showInputDialog("Enter username");
-		ip = JOptionPane.showInputDialog("Enter IP address of game server");
 		
 		chatRoom = new ChatRoom(); //Instantiate the chatroom
 		host = chatRoom.getHost(); //Get the host
@@ -122,16 +121,8 @@ public class Game extends JFrame{
 		formationScreen.add(defenseLabel);
 		formationScreen.add(defensePane);
 		
-		try {
-			gameClient = new UDPClient(ip, username);
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} //Instantiate the client
-		
 		//The layout cards
 		screens.add(formationScreen, "HOME PAGE");
-		screens.add(gameClient, "BATTLE PAGE");
 		
 		//The game button for start and quit
 		gameButton = new JButton("ENGAGE!");
@@ -145,7 +136,7 @@ public class Game extends JFrame{
 		//Set the banner of game
 		header = new JPanel();
 		header.setPreferredSize(new Dimension(700,100));
-		ImageIcon banner = new ImageIcon("banner.jpg");
+		ImageIcon banner = new ImageIcon(getClass().getResource("banner.jpg"));
 		headerBG = new JLabel(banner);
 		header.add(headerBG);
 		
@@ -170,16 +161,29 @@ public class Game extends JFrame{
 		
 		//Ask if run as server, 
 		int choice = JOptionPane.showConfirmDialog(null,
-				"Run the chat server?", "YES OR NO?", JOptionPane.YES_NO_OPTION);
+				"Create room and run as host?", "YES OR NO?", JOptionPane.YES_NO_OPTION);
 		
-		if(choice == 0){ //Then run the server
+		if(choice == 0){
 			server_user = true;
-			Server server = new Server(port);
-			server.start(); // Run the server for chat
+			new UDPServer(2); //Run the game server
+			//new ManInTheMiddle(chatRoom.getIP());
+			try {
+				gameClient = new UDPClient(chatRoom.getIP(),username); //Instantiate the game client in the localhost
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			screens.add(gameClient, "BATTLE PAGE"); //Add to the card layout
 		}else{ //Then run as client
-			ip = JOptionPane.showInputDialog("Enter IP address of chat server");
+			ip = JOptionPane.showInputDialog("Enter IP address of room server to join");
+			try {
+				gameClient = new UDPClient(ip,username); //Instantiate the game client
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			screens.add(gameClient, "BATTLE PAGE");
 			chatRoom.setIP(ip);
-			System.out.println("Running as client...");
 		}
 			
 	}
@@ -215,19 +219,20 @@ public class Game extends JFrame{
  				gameButton.setText("Tactics Formation");
  	 			gameClient.getGame(game);
  	 			
- 	 			if(gameClient.connected == false){
+ 	 			if(gameClient.connected == false){ //Resume the thread
  	 				gameClient.t.resume();
  	 			}
+ 	 			
+					dialog.setTitle("MESSAGE");
+					dialog.setModal(true);
+
+					dialog.setContentPane(optionPane);
+
+					dialog.setLocationRelativeTo(null);
+					dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+					dialog.pack();
  				
  				while(gameClient.headerLabel.getText() == "Waiting for players..."){
- 					dialog.setTitle("MESSAGE");
- 					dialog.setModal(true);
-
- 					dialog.setContentPane(optionPane);
-
- 					dialog.setLocationRelativeTo(null);
- 					dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
- 					dialog.pack();
  					dialog.setVisible(true);
  				}
  				
@@ -248,20 +253,34 @@ public class Game extends JFrame{
 				if(engagementChoice == 0){//Send the offensive tactics
 					//Get the game state packet
 					
+					//For offense
 					message = "OffensiveTactics ";
 					message += troops[0].troop.showName(troops[0].troop.type) + " ";
 					message += troops[1].troop.showName(troops[1].troop.type) + " ";
 					message += troops[2].troop.showName(troops[2].troop.type);
+					
+					//In case packet was dropped, send defensive tactics instead
+					altMessage = "DefensiveTactics ";
+					altMessage += buildings[0].build.showName(buildings[0].build.type) + " ";
+					altMessage += buildings[1].build.showName(buildings[1].build.type) + " ";
+					altMessage += buildings[2].build.showName(buildings[2].build.type);
 					
 					gameClient.sendMessage(message);
 	
 				}else if(engagementChoice == 1){//Send the defensive tactics
 					//Get the game state packet
 					
+					//For defense
 					message = "DefensiveTactics ";
 					message += buildings[0].build.showName(buildings[0].build.type) + " ";
 					message += buildings[1].build.showName(buildings[1].build.type) + " ";
 					message += buildings[2].build.showName(buildings[2].build.type);
+					
+					//In case packet was dropped, send offensive tactics instead
+					altMessage = "OffensiveTactics ";
+					altMessage += troops[0].troop.showName(troops[0].troop.type) + " ";
+					altMessage += troops[1].troop.showName(troops[1].troop.type) + " ";
+					altMessage += troops[2].troop.showName(troops[2].troop.type);
 					
 					gameClient.sendMessage(message);
 				}

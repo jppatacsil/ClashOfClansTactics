@@ -1,6 +1,11 @@
-
+/**
+ * This class is for the Defensive Buildings Object
+ * @author Jophi
+ *
+ */
 public class Buildings {
 	
+	//Class variables
 	int hp;
 	int ap;
 	int type;
@@ -55,6 +60,7 @@ public class Buildings {
 		
 	}
 	
+	//Method to get the type of building
 	public String showName(int type){
 		String name = null;
 		switch(type){

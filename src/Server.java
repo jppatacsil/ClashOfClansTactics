@@ -4,7 +4,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /*
- * The server that can be run both as a console application or a GUI
+ * The server for the chat room
  */
 public class Server {
 	// a unique ID for each connection

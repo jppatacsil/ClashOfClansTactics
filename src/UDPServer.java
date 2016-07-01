@@ -35,10 +35,7 @@ public class UDPServer implements Runnable, Constants{
 		t.start();
 	}
 	
-	/**
-	 * Helper method for broadcasting data to all players
-	 * @param msg
-	 */
+	//Method for sending packets to all the clients connected in the server
 	public void broadcast(String msg){
 		for(Iterator ite=game.getPlayers().keySet().iterator();ite.hasNext();){
 			String name=(String)ite.next();
@@ -46,13 +43,7 @@ public class UDPServer implements Runnable, Constants{
 			send(player,msg);	
 		}
 	}
-
-
-	/**
-	 * Send a message to a player
-	 * @param player
-	 * @param msg
-	 */
+	
 	public void send(Player player, String msg){
 		DatagramPacket packet;	
 		byte buf[] = msg.getBytes();		
@@ -84,7 +75,7 @@ public class UDPServer implements Runnable, Constants{
 			playerData = playerData.trim();
 			
 			if (!playerData.equals("")){
-				System.out.println("Player Data> "+playerData);
+				System.out.println("Player Data>"+playerData);
 			}
 			
 			// process
@@ -117,6 +108,7 @@ public class UDPServer implements Runnable, Constants{
 							reply = playerData.split(" ");
 							broadcast("Defense: "+reply[1]+" "+reply[2]+" "+reply[3]);
 						}
+					  
 					  if(playerData.startsWith("Reset")){
 						  broadcast("Restarting game...");
 						  System.out.println("Game State: END");
@@ -128,7 +120,7 @@ public class UDPServer implements Runnable, Constants{
 					  gameStage=WAITING_FOR_PLAYERS;
 					  playerCount = 0;
 					  break;
-			}				  
+			}
 		}
 	}
 	

@@ -21,7 +21,7 @@ import javax.swing.SwingConstants;
 public class UDPClient extends JPanel implements Runnable, Constants{
 	
 	String username = "anonymous";
-	String address = "localhost";
+	String address;
 	String serverData;
 	String[] reply;
 	String[] offenseTroops = new String[3];
@@ -77,22 +77,22 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 				defScreen.setBackground(Color.WHITE);
 				
 				//Load all the images for offensive troops
-				oAvatar[0] = new ImageIcon("unknownAvatar.jpg");
-				oAvatar[1] = new ImageIcon("barbsAvatar.jpg");
-				oAvatar[2] = new ImageIcon("archerAvatar.jpg");
-				oAvatar[3] = new ImageIcon("giantsAvatar.jpg");
-				oAvatar[4] = new ImageIcon("balloonAvatar.jpg");
-				oAvatar[5] = new ImageIcon("wizardsAvatar.jpg");
-				oAvatar[6] = new ImageIcon("dragonAvatar.jpg");
+				oAvatar[0] = new ImageIcon(getClass().getResource("unknownAvatar.jpg"));
+				oAvatar[1] = new ImageIcon(getClass().getResource("barbsAvatar.jpg"));
+				oAvatar[2] = new ImageIcon(getClass().getResource("archerAvatar.jpg"));
+				oAvatar[3] = new ImageIcon(getClass().getResource("giantsAvatar.jpg"));
+				oAvatar[4] = new ImageIcon(getClass().getResource("balloonAvatar.jpg"));
+				oAvatar[5] = new ImageIcon(getClass().getResource("wizardsAvatar.jpg"));
+				oAvatar[6] = new ImageIcon(getClass().getResource("dragonAvatar.jpg"));
 
 				//Load all images for defensive buildings
-				dAvatar[0] = new ImageIcon("unknownAvatar.jpg");
-				dAvatar[1] = new ImageIcon("cannonAvatar.jpg");
-				dAvatar[2] = new ImageIcon("aTowerAvatar.jpg");
-				dAvatar[3] = new ImageIcon("mortarAvatar.jpg");
-				dAvatar[4] = new ImageIcon("airDAvatar.jpg");
-				dAvatar[5] = new ImageIcon("wTowerAvatar.jpg");
-				dAvatar[6] = new ImageIcon("tTowerAvatar.jpg");
+				dAvatar[0] = new ImageIcon(getClass().getResource("unknownAvatar.jpg"));
+				dAvatar[1] = new ImageIcon(getClass().getResource("cannonAvatar.jpg"));
+				dAvatar[2] = new ImageIcon(getClass().getResource("aTowerAvatar.jpg"));
+				dAvatar[3] = new ImageIcon(getClass().getResource("mortarAvatar.jpg"));
+				dAvatar[4] = new ImageIcon(getClass().getResource("airDAvatar.jpg"));
+				dAvatar[5] = new ImageIcon(getClass().getResource("wTowerAvatar.jpg"));
+				dAvatar[6] = new ImageIcon(getClass().getResource("tTowerAvatar.jpg"));
 
 				oPortrait = new JLabel(oAvatar[0]);
 				dPortrait = new JLabel(dAvatar[0]);
@@ -174,7 +174,7 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 			}else if (connected){
 				
 				reply = serverData.split(" ");
-				
+
 				//CHECK IF BOTH PLAYERS ARE CONNECTED
 				if(reply[0].equalsIgnoreCase("START")){
 					headerLabel.setText("PLAYERS CONNECTED!");
@@ -198,13 +198,13 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 				//CHECK IF OFFENSIVE SIDE HAS ALREADY BEEN TAKEN
 				if(reply[0].equalsIgnoreCase("OFFENSE:") && offenseTaken == true){
 					JOptionPane.showMessageDialog(null, "Offense Already Taken!");
-					return;
+					sendMessage(game.altMessage); //Drop the original packet, send alt message
 				}
 				
 				//CHECK IF DEFENSIVE SIDE HAS ALREADY BEEN TAKEN
 				if(reply[0].equalsIgnoreCase("DEFENSE:") && defenseTaken == true){
 					JOptionPane.showMessageDialog(null, "Defense Already Taken!");
-					return;
+					sendMessage(game.altMessage); //Drop the original packet, send alt message
 				}
 				
 				//UPDATE THE OFFENSE SIDE IF PACKETS SENT WAS FOR OFFENSE
@@ -228,7 +228,6 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 				}
 	
 			}
-
 		}			
 	}
 	
@@ -236,7 +235,6 @@ public class UDPClient extends JPanel implements Runnable, Constants{
 	public static void updateScreen(String playSide, String tactic, int order){
 		
 		if(playSide.equalsIgnoreCase("OFFENSE:")){//Offensive side
-
 			//FOR THE OFFENSIVE SIDE
 			if(tactic.equalsIgnoreCase("BARBARIANS")){ 
 				oPortrait.setIcon(oAvatar[1]);
